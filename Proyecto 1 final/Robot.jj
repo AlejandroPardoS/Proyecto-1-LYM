@@ -1,0 +1,829 @@
+/*
+Gramatica para el Robot:
+Autor: Alejandro Arango
+Modificado por: Silvia Takahashi
+Modificado por: Juan Pablo Morales.
+Agregadas producciones para manejar globos
+Modificado por Silvia Takahashi
+
+
+ **/
+
+
+options 
+{
+  
+	LOOKAHEAD=1; 
+	IGNORE_CASE=true;
+	STATIC = false;
+	
+}
+   
+
+PARSER_BEGIN(Robot)
+
+package uniandes.lym.robot.control;
+
+import uniandes.lym.robot.kernel.*;
+import uniandes.lym.robot.view.Console;
+ 
+import java.awt.Point;
+import java.io.*;
+import java.util.Vector;
+import java.util.LinkedList;
+
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.awt.Point;
+
+@SuppressWarnings("serial")
+public class Robot 
+{
+
+
+	private RobotWorldDec world;
+	
+	
+	void setWorld(RobotWorld w) {
+		world = (RobotWorldDec) w; }
+
+	public static final int NORTH = 0;
+	public static final int SOUTH = 1;
+	public static final int EAST = 2;
+	public static final int WEST = 3;
+	
+	public int obtainOri(String ori) throws Error {
+		int o;
+		if (ori.equals("north")){
+			o = NORTH;
+			}
+		else if (ori.equals("south")) {
+			o = SOUTH;
+		}
+		else if (ori.equals("east")) {
+			o = EAST;
+		}
+		else {
+			o = WEST;
+		}
+		return o;
+	}
+	public void toTurnTo(String ori) throws Error { 
+		int orien = obtainOri(ori); 
+		turnTo(orien);
+	}
+
+	public void turnTo(int orien) throws Error {
+		int oriActual = world.getFacing();
+		if (oriActual != orien) {
+		   world.turnRight();
+		   oriActual = world.getFacing();
+		   if (oriActual != orien) {
+		     world.turnRight();
+		     oriActual = world.getFacing();
+		     if (oriActual != orien) {
+		     	world.turnRight();
+		     	oriActual = world.getFacing();
+		     	if (oriActual != orien) {
+		     		world.turnRight();}
+		     }
+			}
+		   }
+	  }
+	  
+	private static HashMap<String, String> variable = new HashMap<String, String>();
+
+	public int obtenerValor(String nombre) throws Error {
+	  	int retorno = 0;
+		if (variable.containsKey(nombre)) {
+			String valor = variable.get(nombre);
+			int valorfin = Integer.parseInt(valor);
+			retorno = valorfin;
+			}
+		else {
+			throw new Error("La variable "+nombre+" no esta definida!");}
+		return retorno;
+	}
+
+	public void ejecutarComandoBloque(String comandoCompleto)
+	{
+	  String inicio = "(";
+	  String fin = ");";
+	  int indiceInicio = comandoCompleto.indexOf(inicio)+1;
+	  int indiceFin = comandoCompleto.indexOf(fin);
+	  
+	  if (comandoCompleto.contains("jump")) {				
+	    int indiceComa = comandoCompleto.indexOf(",");
+	    String numeroStr1 = comandoCompleto.substring(indiceInicio, indiceComa);
+		int x = Integer.parseInt(numeroStr1);
+		String numeroStr2 = comandoCompleto.substring(indiceComa+1,indiceFin);
+		int y = Integer.parseInt(numeroStr2);
+	    world.setPostion(x,y);
+	    salida = "Command: Jump"; }
+	
+	  else if (comandoCompleto.contains("walk")){
+		//es comando Walk, verificar si es doble o sencillo
+	    if (comandoCompleto.contains(",")) {
+	      	int indiceComa = comandoCompleto.indexOf(",");
+			String numeroStr = comandoCompleto.substring(indiceInicio, indiceComa);
+			int f = Integer.parseInt(numeroStr);
+			//F YA LOGRADO...
+	    	if (comandoCompleto.contains("north") || comandoCompleto.contains("south") || comandoCompleto.contains("east") || comandoCompleto.contains("west"))
+                { String o = comandoCompleto.substring(indiceComa+1, indiceFin);
+                //ORI YA LOGRADO...
+		    	boolean jump = false;
+				toTurnTo(o);	
+				int orient = obtainOri(o);
+				if(orient == NORTH)
+					world.moveVertically(-f,jump);
+				else if(orient == SOUTH) 
+					world.moveVertically(f, jump);
+				else if(orient == EAST)
+					world.moveHorizontally(f, jump);
+				else
+					world.moveHorizontally(-f, jump);
+		      	salida = "Command: Walk(n,orientation)";}
+		    else {
+                String d = comandoCompleto.substring(indiceComa+1, indiceFin);
+                //D YA LOGRADO...
+		      	int miraInicial = world.getFacing();
+				if (d.equals("right"))
+					world.turnRight();
+				else if (d.equals("left"))
+					for (int i = 0; i < 3; i++) {
+	            		world.turnRight(); }
+				else if (d.equals("back"))
+					for (int i = 0; i < 2; i++) {
+	            		world.turnRight(); }
+				world.moveForward(f, false);
+				turnTo(miraInicial);		  
+			  	salida = "Command: Walk(n,direction)"; }
+		  	}
+		else {
+	    	String numeroStr = comandoCompleto.substring(indiceInicio, indiceFin);
+			int f = Integer.parseInt(numeroStr);
+			world.moveForward(f, false);
+			salida = "Command: Walk(n)"; }
+	    }
+	
+	
+	  else if (comandoCompleto.contains("leap")){
+		//es comando Leap, verificar si es doble o sencillo
+	    if (comandoCompleto.contains(",")) {
+	      	int indiceComa = comandoCompleto.indexOf(",");
+			String numeroStr = comandoCompleto.substring(indiceInicio, indiceComa);
+			int f = Integer.parseInt(numeroStr);
+			//F YA LOGRADO...
+	    	if (comandoCompleto.contains("north") || comandoCompleto.contains("south") || comandoCompleto.contains("east") || comandoCompleto.contains("west"))
+                { String o = comandoCompleto.substring(indiceComa+1, indiceFin);
+                //ORI YA LOGRADO...
+		    	boolean jump = true;
+				toTurnTo(o);	
+				int orient = obtainOri(o);
+				if(orient == NORTH)
+					world.moveVertically(-f,jump);
+				else if(orient == SOUTH) 
+					world.moveVertically(f, jump);
+				else if(orient == EAST)
+					world.moveHorizontally(f, jump);
+				else
+					world.moveHorizontally(-f, jump);
+		      	salida = "Command: Leap(n,orientation)";}
+		    else {
+                String d = comandoCompleto.substring(indiceComa+1, indiceFin);
+                //D YA LOGRADO...
+		      	int miraInicial = world.getFacing();
+				if (d.equals("right"))
+					world.turnRight();
+				else if (d.equals("left"))
+					for (int i = 0; i < 3; i++) {
+	            		world.turnRight(); }
+				else if (d.equals("back"))
+					for (int i = 0; i < 2; i++) {
+	            		world.turnRight(); }
+				world.moveForward(f, true);
+				turnTo(miraInicial);		  
+			  	salida = "Command: Leap(n,direction)"; }
+		}
+		else {
+	    	String numeroStr = comandoCompleto.substring(indiceInicio, indiceFin);
+			int f = Integer.parseInt(numeroStr);
+			world.moveForward(f, true);
+			salida = "Command: Leap(n)"; }
+	    }
+	
+   	else if (comandoCompleto.contains("turn")){
+		//turn(direction);| turnto(orientacion);
+   		if (comandoCompleto.contains("turnto")) {
+   		    String o = comandoCompleto.substring(indiceInicio, indiceFin);
+			toTurnTo(o);
+			salida = "Command: Turnto";
+   		   }
+   		else {
+   		    String d = comandoCompleto.substring(indiceInicio, indiceFin);
+		   	if (d.equals("right")) 
+				world.turnRight();
+			else if (d.equals("left"))
+				for (int i = 0; i < 3; i++) {
+					world.turnRight(); }
+			else if (d.equals("around"))
+				for (int i = 0; i < 2; i++) {
+					world.turnRight(); }
+			salida = "Command: Turn";
+			}
+		}
+	
+	else if (comandoCompleto.contains("drop")) {
+	  String numeroStr = comandoCompleto.substring(indiceInicio, indiceFin);
+	  int x = Integer.parseInt(numeroStr);
+	  world.putChips(x);
+	  salida = "Command:  Drop";
+	  }
+	
+	else if (comandoCompleto.contains("get")) {
+		String numeroStr = comandoCompleto.substring(indiceInicio, indiceFin);
+		int x = Integer.parseInt(numeroStr);
+		world.pickChips(x);
+		salida = "Command:  Get";
+	  }
+	
+	else if (comandoCompleto.contains("grab")) {
+		String numeroStr = comandoCompleto.substring(indiceInicio, indiceFin);
+		int x = Integer.parseInt(numeroStr);
+		world.grabBalloons(x);
+		salida="Command:  Grab";
+	  }
+	
+	else if (comandoCompleto.contains("letgo")) {
+		String numeroStr = comandoCompleto.substring(indiceInicio, indiceFin);
+		int x = Integer.parseInt(numeroStr);
+		world.putBalloons(x);
+		salida = "Command:  LetGo";
+	  }
+	else if (comandoCompleto.contains("nop"))
+	{salida = "Command: Nop";}
+	}
+	private static ArrayList<String> bloqueEnArray = new ArrayList<String>();
+
+	public boolean auxiliarCan(ArrayList<String> comandoArray)
+	{
+	  boolean retorno;
+	  int oriIni = world.getFacing();
+	  Point posInicial =world.getPosition();
+	  int coorX = posInicial.x;
+	  int coorY = posInicial.y;
+
+	  try {
+	    for (String elemento : comandoArray) {
+	           ejecutarComandoBloque(elemento); }
+	    world.setPostion(coorX,coorY);
+	    turnTo(oriIni);
+	    return true;
+	    } catch (Error e) {return false;}
+	}
+	
+	String salida=new String();
+}
+PARSER_END(Robot)
+
+SKIP:
+{
+	" "
+	|	"\r"
+	|	"\t"
+	| "\n"
+}
+
+TOKEN: /* Nombres de Comandos */
+{
+
+			<MOV:  "Move">
+		//| 	<RIGHT: "RIGHT"> "GENERABA ERRORES"
+		| 	<PUT: "Put">
+		| 	<PICK: "Pick">
+		|  < POP: "Pop" >
+		|  <GO: "GO" >
+        |  < HOP:  "HOP" >
+        |  < JUMP: "jump" >
+        |  < WALK: "walk" >
+        |  < LEAP: "leap" >
+        |  < TURN: "turn" >
+        |  < TURNTO: "turnto" >
+        |  < DROP: "drop" >
+        |  < GET: "get" >
+        |  < GRAB: "grab" >
+        |  < LETGO: "letGo" >
+        |  < NOP: "nop" >
+        |  < DEFVAR: "defVar" >
+        |  < FACING: "facing" >
+        |  < CAN: "can" >
+        |  < NOT: "not" >
+        |  < IF: "if" >
+        |  < ELSE: "else" >
+        |  < WHILE: "while" >
+        |  < REPEAT: "repeat" >
+        |  < TIMES: "times" >
+        |  < DEFPROC: "defProc" >
+
+}
+
+TOKEN:
+{
+		<BALLOONS:  "BALLOONS" >
+		|	<CHIPS:     "CHIPS"  >	
+
+}
+
+
+
+TOKEN :
+{
+		<NUM: (<DIGIT>)+ >
+		|  	<#DIGIT: ["0"-"9"] >
+		| < ORI: (< ORIENTATION >) >
+        | < #ORIENTATION: ("north"|"south"|"east"|"west") >
+        | < DIR: (< RIGLEF >) >
+        | < #RIGLEF:("right"|"left") >
+        | < AROUNDT: (< AROUNN >) >
+        | < #AROUNN: ("around") >
+        | < BACKFRONT: (< BACFRON >) >
+        | < #BACFRON: ("back"|"front") >
+        | < CAD: (< CADENA >)+ >
+        | < #CADENA: ["a"-"z","A"-"Z","0"-"9"] >
+}
+
+
+	boolean command(Console sistema):
+	{
+	}
+	{
+	  (	    comandos()
+	  | definicion()
+	  | condicionalIf()
+	  | ciclos()
+	  
+	{
+	   try {
+	    			 Thread.sleep(900);
+	    	    } catch (InterruptedException e) {
+	    			        System.err.format("IOException: %s%n", e);
+	    			        return false;
+	    		    }
+	    			 
+			sistema.printOutput(salida);
+			return true;
+		})+
+		
+		| <EOF> {return false;} 
+	}
+
+	//boolean command(uniandes.lym.robot.view.Console sistema) :
+	void comandos():
+	{	
+		
+		int x,y;
+		String o,d;
+		boolean retorno=true;
+		salida=new String();	
+	}
+	{		  (
+		   //<RIGHT> "(" ")" {world.turnRight();salida = "Command: Turnright";}
+		 	<MOV>  "(" (x=num()|x=var()) ")" {world.moveForward(x,false); salida = "Command: Moveforward ";}  
+		| 	<HOP>  "(" (x=num()|x=var()) ")" {world.moveForward(x,true); salida = "Command:Jumpforward ";}
+		| 	<GO>  "(" (x=num()|x=var()) "," (y=num()|y=var())")" {world.setPostion(x,y); salida = "Command:GO ";}  
+		|  <PUT> "("  put() ")"
+		|  <PICK> "("  get()  ")"
+	    |  < POP > "(" (x=num()|x=var()) ")" {world.popBalloons(x); salida = "Command:  Pop";}
+	    |  < JUMP > "(" (x=num()|x=var()) "," (y=num()|y=var()) ")" {world.setPostion(x,y);
+	      															salida = "Command: Jump";}
+	    |  < WALK > "(" walk() ")"
+	    |  < LEAP > "(" leap() ")" 
+	    |  < TURN > "(" d=dirturn() ")" {if (d.equals("right")) 
+											world.turnRight();
+										else if (d.equals("left"))
+											for (int i = 0; i < 3; i++) {
+            									world.turnRight(); }
+										else if (d.equals("around"))
+											for (int i = 0; i < 2; i++) {
+            									world.turnRight(); }
+	      								salida = "Command: Turn";}
+	    |  < TURNTO > "(" o=ori() ")" {toTurnTo(o);
+	    								salida = "Command: TurnTo";}
+	   	|  < DROP > "(" (x=num()|x=var()) ")" {world.putChips(x);
+	   											salida = "Command:  Drop"; }
+	    |  < GET > "(" (x=num()|x=var()) ")" {world.pickChips(x);
+	    										salida = "Command:  Get";}
+	    |  < GRAB > "(" (x=num()|x=var()) ")" {world.grabBalloons(x);
+	    										salida="Command:  Grab";}
+	    |  < LETGO > "(" (x=num()|x=var()) ")" {world.putBalloons(x);
+	    										salida = "Command:  LetGo";}
+	    |  < NOP > "(" ")" {salida = "Command: Nop";}
+		) ";"
+	}
+
+	ArrayList<String> comandosNoEjecutables():
+	{
+		ArrayList<String> bloqueEnArray = new ArrayList<String>();
+		//bloqueEnArray.add("nop();");
+		int x,y,f;
+		String o=null;
+		String d=null;
+		salida=new String();	
+	}
+	{
+		  (		    (
+		   //<RIGHT> "(" ")" {world.turnRight();salida = "Command: Turnright";}
+		 	<MOV>  "(" (x=num()|x=var()) ")" {bloqueEnArray.add("mov("+x+");"); salida = "Command: Moveforward ";}  
+		| 	<HOP>  "(" (x=num()|x=var()) ")" {bloqueEnArray.add("hop("+x+");"); salida = "Command:Jumpforward ";}
+		| 	<GO>  "(" (x=num()|x=var()) "," (y=num()|y=var())")" {bloqueEnArray.add("go("+x+");"); salida = "Command:GO ";}  
+		|  <PUT> "("  put() ")" 
+		|  <PICK> "("  get()  ")"
+	    |  < POP > "(" (x=num()|x=var()) ")" {bloqueEnArray.add("pop("+x+");"); salida = "Command:  Pop";}
+	    |  < JUMP > "(" (x=num()|x=var()) "," (y=num()|y=var()) ")" {bloqueEnArray.add("jump("+x+","+y+");"); salida = "Command: Jump";}
+	    |  < WALK > "(" ((f=num()|f=var()) ("," (o=ori()|d=dir()))?) ")" {if (o==null && d==null) {bloqueEnArray.add("walk("+f+");");}
+	    																else if (o==null && d != null) {bloqueEnArray.add("walk("+f+","+d+");"); }
+	    																else {bloqueEnArray.add("walk("+f+","+o+");"); } 
+	      																salida = "Command: Walk";}
+	    |  < LEAP > "(" ((f=num()|f=var()) ("," (o=ori()|d=dir()))?) ")" {if (o==null && d==null) {bloqueEnArray.add("leap("+f+");");}
+	    																else if (o==null && d != null) {bloqueEnArray.add("leap("+f+","+d+");"); }
+	    																else {bloqueEnArray.add("leap("+f+","+o+");"); }
+	      																salida = "Command: leap";}
+	    |  < TURN > "(" d=dirturn() ")" {bloqueEnArray.add("turn("+d+");"); salida = "Command: Turn";}
+	    |  < TURNTO > "(" o=ori() ")" {bloqueEnArray.add("turnto("+o+");"); salida = "Command: TurnTo";}
+	   	|  < DROP > "(" (x=num()|x=var()) ")" {bloqueEnArray.add("drop("+x+");"); salida = "Command:  Drop"; }
+	    |  < GET > "(" (x=num()|x=var()) ")" {bloqueEnArray.add("get("+x+");"); salida = "Command:  Get";}
+	    |  < GRAB > "(" (x=num()|x=var()) ")" {bloqueEnArray.add("grab("+x+");"); salida="Command:  Grab";}
+	    |  < LETGO > "(" (x=num()|x=var()) ")" {bloqueEnArray.add("letgo("+x+");"); salida = "Command:  LetGo";}
+	    |  < NOP > "(" ")" {bloqueEnArray.add("nop();"); salida = "Command: Nop";}
+		) ";")+
+	{
+	  return bloqueEnArray;
+	}
+	}
+
+
+	void definicion():
+	{	
+		int d = 0;
+		String x = null;
+		String c;
+		salida=new String();	
+	}	
+	{
+		  (
+			< DEFVAR > c=cad() (d=num()|x=vardef()) {if (d != 0 && x == null) {
+		    										 x = Integer.toString(d); }
+		    										 
+		  											 try {
+														 int valor = Integer.parseInt(x);
+														 variable.put(c, x);
+													 } catch(Exception e) {
+														 if (variable.containsKey(x)) {
+															 variable.put(c, variable.get(x));
+														 }
+														 else {
+															 throw new Error("No es un valor valido");
+														 }
+													 }
+		  											 salida="Definicion Variable"; }
+		)
+	}
+
+	boolean commandConditional():
+	{
+		boolean com=false;
+		boolean retorno=false;
+		String o;
+		ArrayList<String> comandoArray = new ArrayList<String>();
+	} 
+	{
+	  (
+	    < NOT > ":"  com=commandConditional() {retorno=(!com);
+	    									salida = "Condition: Not"; }
+  	   	 | < FACING > "(" o=ori()")" {int orien = obtainOri(o);
+										if (orien == world.getFacing())
+											retorno=true;
+										else
+											retorno=false;
+											
+  	   	 								 salida = "Condition: Facing";}
+		 | < CAN > "(" (comandoArray=comandosNoEjecutables()) ")" {retorno=auxiliarCan(comandoArray);
+		 															salida = "Condition: Can"; }	  )
+	{return retorno;}
+	}
+
+	void condicionalIf():
+	{
+	  ArrayList<String> bloqueArray = new ArrayList<String>();
+	  ArrayList<String> bloqueArray2 = new ArrayList<String>();
+	  boolean reto=false;
+	  salida=new String();
+	  int x;
+	}
+	{
+	  < IF > (reto=commandConditional()) "{" (bloqueArray=comandosNoEjecutables()) "}"  <ELSE > "{" (bloqueArray2=comandosNoEjecutables()) "}"
+	  {//ACA SI CORRER, DEPENDIENDO EL VALOR DE RETO, ALMACENAR EL BLOQUE EN UN ARRAY
+		if (reto) { 
+			for (String elemento : bloqueArray) {
+	            ejecutarComandoBloque(elemento);
+				}
+			//EN TEORIA EN COMANDOBLOQ ESTA EL COMANDO..., AHORA COMO EJECUTO, PODRIA HACER UN IF GIGANTE
+	            
+		    salida = "If-else";}
+		else {
+			for (String elemento : bloqueArray2) {
+	            ejecutarComandoBloque(elemento);
+				}
+			salida = "If-else";}
+	  }
+	}
+
+	void ciclos():
+	{
+	  int x;
+	  boolean reto=false;
+	  ArrayList<String> bloqueArray = new ArrayList<String>();
+	}
+	{
+	  < REPEAT > (x=num()|x=var()) < TIMES > "{" (bloqueArray=comandosNoEjecutables()) "}"
+	  { for (int i = 0; i<= x; i++) { 
+	    	for (String elemento : bloqueArray) {
+	            ejecutarComandoBloque(elemento); } }
+	    salida = "Ciclo repeat";}
+	| < WHILE > (reto=commandConditional())"{" (bloqueArray=comandosNoEjecutables()) "}"
+	{
+	  if (reto) { 
+		  for (String elemento : bloqueArray) {
+		            ejecutarComandoBloque(elemento);}
+		   }
+	  else {}
+		salida = "Ciclo while";}
+	}
+
+	void defProc():
+	{
+	  int x,y;
+	}
+	{
+	  (
+	  < DEFPROC > "(" ((x=num()|x=var()) ("," (y=num()|y=var()))?) ")" {salida="Definicion de procedimiento";}
+		)
+	}
+
+	
+	void put() :
+	{
+		int f=1;
+		boolean retorno;
+	}
+	{
+		( <CHIPS>    "," (f=num()|f=var()) {world.putChips(f); salida = "Command:  Put Chips"; })
+		|  	  ( <BALLOONS>   "," (f=num()|f=var()) {world.putBalloons(f); salida = "Command:  Put Balloons";})	 
+
+	}
+
+	void get() :
+	{
+		int f=1;
+		boolean retorno;	
+	}
+	{
+		( <CHIPS>   "," (f=num()|f=var()) {world.pickChips(f); salida = "Command:  Pick chips";})
+		|  	  ( <BALLOONS>   "," (f=num()|f=var()) {world.grabBalloons(f); salida="Command:  Pick balloons";})	 
+	}
+
+
+	void walk():
+	{
+	  int f;
+	  String o=null;
+	  String d=null;
+	  boolean retorno=false;
+	}
+	{ 
+	  ((f=num()|f=var()) ("," (o=ori()|d=dir()))?)
+	  {
+	    if (o == null && d == null) {
+			world.moveForward(f, false);
+			salida = "Command: Walk(n)";
+	      
+	    } else if (o!=null){
+	      	boolean jump = false;
+			toTurnTo(o);	
+			int orient = obtainOri(o);
+			if(orient == NORTH)
+				world.moveVertically(-f,jump);
+			else if(orient == SOUTH) 
+				world.moveVertically(f, jump);
+			else if(orient == EAST)
+				world.moveHorizontally(f, jump);
+			else
+				world.moveHorizontally(-f, jump);
+	      	salida = "Command: Walk(n,orientation)";
+	      
+		} else if (d!=null) {
+			int miraInicial = world.getFacing();
+			if (d.equals("right"))
+				world.turnRight();
+			else if (d.equals("left"))
+				for (int i = 0; i < 3; i++) {
+            		world.turnRight(); }
+			else if (d.equals("back"))
+				for (int i = 0; i < 2; i++) {
+            		world.turnRight(); }
+			world.moveForward(f, false);
+			turnTo(miraInicial);		  
+		  	salida = "Command: Walk(n,direction)";
+		}
+		}
+	}
+
+
+	void leap():
+		{
+	  int f;
+	  String o=null;
+	  String d=null;
+	  boolean retorno=false;
+	}
+	{ 
+	  ((f=num()|f=var()) ("," (o=ori()|d=dir()))?)
+	  {
+	    if (o == null && d == null) {
+			world.moveForward(f, true);
+			salida = "Command: Leap(n)";
+	      
+	    } else if (o!=null){
+	      	boolean jump = true;
+			toTurnTo(o);	
+			int orient = obtainOri(o);
+			if(orient == NORTH)
+				world.moveVertically(-f,jump);
+			else if(orient == SOUTH) 
+				world.moveVertically(f, jump);
+			else if(orient == EAST)
+				world.moveHorizontally(f, jump);
+			else
+				world.moveHorizontally(-f, jump);
+	      	salida = "Command: Leap(n,orientation)";
+	      
+		} else if (d!=null) {
+			int miraInicial = world.getFacing();
+			if (d.equals("right"))
+				world.turnRight();
+			else if (d.equals("left"))
+				for (int i = 0; i < 3; i++) {
+            		world.turnRight(); }
+			else if (d.equals("back"))
+				for (int i = 0; i < 2; i++) {
+            		world.turnRight(); }
+			world.moveForward(f, true);
+			turnTo(miraInicial);		  
+		  	salida = "Command: Leap(n,direction)";
+		}
+		}
+	}
+
+	/**
+	 * Unsigned decimal number
+	 * @return the corresponding value of the string
+	 * @error  corresponding value is too large
+	 */
+
+	int num() throws Error:
+	{	
+		int total=1;
+	}
+	{
+		<NUM>
+		{
+			try 
+			{
+				total = Integer.parseInt(token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+
+	String ori() throws Error:
+	{	
+		String total;
+	}
+	{
+		<ORI>
+		{
+			try 
+			{
+				total = (token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+
+	String dir() throws Error:
+	{	
+		String total;
+	}
+	{
+		(<DIR>|< BACKFRONT >)
+		{
+			try 
+			{
+				total = (token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+	
+
+	String dirturn() throws Error:
+	{	
+		String total;
+	}
+	{
+		(<DIR>|< AROUNDT >)
+		{
+			try 
+			{
+				total = (token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+
+	int var() throws Error:
+	{
+	  int total;
+	  String variableF;
+	}
+	{
+	 	< CAD >
+	 	{
+	 	  try 
+			{
+			  	variableF = token.image;
+				total = (obtenerValor(variableF));
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+
+	String vardef() throws Error:
+	{
+	  String total,variableF;
+	}
+	{
+	 	< CAD >
+	 	{
+	 	  try 
+			{
+			  	variableF = token.image;
+				total = Integer.toString(obtenerValor(variableF));
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
+
+	String cad() throws Error:
+	{	
+		String total="";
+	}
+	{
+		<CAD>
+		{
+			try 
+			{
+				total = (token.image);
+			} 
+			catch (NumberFormatException ee) 
+			{
+				throw new Error("Number out of bounds: "+token.image+" !!");
+			}
+			return total;
+		}
+	}
